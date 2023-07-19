@@ -1,0 +1,34 @@
+
+/* ------------------- Default Style ------------------------- */
+
+.gauge-holder
+{
+    width: fit-content;
+    height: fit-content;
+    text-align: center;
+}
+
+@media (max-aspect-ratio: 13/9)
+{
+    .gauge-holder
+    {
+        width: 100%;
+        display: flex;
+        -webkit-box-align: center;
+        align-items: center;
+        justify-content: space-between;
+    }
+}
+
+.gauge-container
+{
+    width: calc(200 * var(--px));
+    height: auto;
+    display: block;
+    /* float: left; */
+    padding: calc(10 * var(--px));
+    overflow: hidden;
+    position: relative;
+    left: 50%;
+    transform: translateX(-50%);
+}

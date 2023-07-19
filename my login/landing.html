@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+
+<html>
+    <head>
+        <title>Sign in to Petus</title>
+        <link href="style.css" rel="stylesheet">
+        <link href="landing.css" rel="stylesheet">
+        <script src="./jquery-3.7.0.min.js"></script>
+        <script>
+            $(function()
+            {
+                $( ".dropdown" ).hover(
+                    function()
+                    {
+                        $( ".dropdown-content" ).stop();
+                        $( ".dropdown-content" ).css("display", "block");
+                        $( ".dropdown-content" ).animate({"opacity": 1}, 300);
+                    },
+                    function()
+                    {
+                        $( ".dropdown-content" ).stop();
+                        $( ".dropdown-content" ).animate({"opacity": -0.5}, 400, function() {$( ".dropdown-content" ).css("display", "none");});
+                    }
+                );
+            });
+        </script>
+    </head>
+    <body>
+        <div id="root" class="landing-root">
+            <header id="header" class="landing-header">
+                <img src="./logo-white.png" width="166">
+                <div style="position: relative; top: 0px;" class="dropdown">
+                    <span>
+                        <img style="width: 60px;" src="./user.svg">
+                        <div class="dropdown-content">
+                            <div class="uinfo">
+                                <h3>User's Name</h3>
+                                <h5>User's Phone</h5>
+                                <div class="separator"></div>
+                                <div class="content">
+                                    Level: Developer
+                                </div>
+                                <div class="separator"></div>
+                                <div class="content link-div">
+                                    Account Settings
+                                </div>
+                                <div class="separator"></div>
+                                <div class="content link-div">
+                                    Sign Out
+                                </div>
+                                <div class="separator"></div>
+                            </div>
+                        </div>
+                    </span>
+                </div>
+            </header>
+        </div>
+    </body>
+</html>

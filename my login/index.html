@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+
+<html>
+    <head>
+        <title>Sign in to Petus</title>
+        <link href="style.css" rel="stylesheet">
+        <script src="./jquery-3.7.0.min.js"></script>
+        <script>
+            var animation_speed = 500;
+            function switch_to_login(direct)
+            {
+                $(("#login")).show();
+                $(("#username")).val("");
+                $(("#password")).val("");
+                $(("#login")).animate({left: "50%"}, animation_speed, function(){$(("#username")).focus()});
+                $(("#recovery")).animate({left: "150%"}, (direct == false ? animation_speed : 0), function(){$(("#recovery")).hide()});
+                $(("#OTP")).animate({left: "150%"}, animation_speed, function(){$(("#OTP")).hide()});
+            }
+            function switch_to_recovery()
+            {
+                $(("#recovery")).show();
+                $(("#recovery-username")).val("");
+                $(("#phone_number")).val("");
+                $(("#recovery")).animate({left: "50%"}, animation_speed, function(){$(("#recovery-username")).focus()});
+                $(("#login")).animate({left: "-50%"}, animation_speed, function(){$(("#login")).hide()});
+                $(("#OTP")).animate({left: "150%"}, animation_speed, function(){$(("#OTP")).hide()});
+            }
+            function switch_to_OTP()
+            {
+                $(("#OTP")).show();
+                $(("#OTP-username")).val("");
+                $(("#new-password")).val("");
+                $(("#OTP")).animate({left: "50%"}, animation_speed, function(){$(("#OTP-username")).focus()});
+                $(("#login")).animate({left: "-50%"}, animation_speed, function(){$(("#login")).hide()});
+                $(("#recovery")).animate({left: "-50%"}, animation_speed, function(){$(("#recovery")).hide()});
+            }
+        </script>
+    </head>
+    <body class="hide-scroll">
+        <div class="animated_bg"></div>
+        <div class="login_logo">
+            <img src="./logo-white.png" width="166">
+        </div>
+
+        <div class="login center" id="login">
+            <header>
+                <h1>
+                    Sign in
+                </h1>
+                <div class="rowtext">Use your Petus credentials</div>
+            </header>
+
+            <form id="login-form">
+                <input id="username" placeholder="Username" tabindex="1" class="pf-c-form-control ec-text-box" name="username" value="" type="text" autofocus="" aria-invalid="" autocomplete="off">
+                <input id="password" tabindex="2" class="ec-text-box" name="password" type="password" autocomplete="off" placeholder="Password" aria-invalid="">
+
+                <input id="kc-login2" tabindex="3" class="ec-gradiant-button fill-row" name="login" type="button" value="Sign In">
+            </form>
+
+            <a tabindex="4" onclick="switch_to_recovery();">
+                Forgot password?
+            </a>
+        </div>
+
+        <div class="login center" id="recovery" style="display: none; left: 150%">
+            <header>
+                <h1>
+                    Password recovery
+                </h1>
+                <div class="rowtext">Use your Petus information</div>
+            </header>
+
+            <form id="recovery-form">
+                <input id="recovery-username" placeholder="Username" tabindex="5" class="pf-c-form-control ec-text-box" name="username" value="" type="text" autofocus="" aria-invalid="" autocomplete="off">
+                <input id="phone_number" tabindex="6" class="ec-text-box" name="phone_number" type="text" autocomplete="off" placeholder="Phone number" aria-invalid="">
+
+                <input id="kc-login2" tabindex="7" onclick="switch_to_OTP();" class="ec-gradiant-button fill-row" name="login" type="button" value="Submit">
+            </form>
+
+            <a tabindex="8" onclick="switch_to_login(false);">
+                Back to login
+            </a>
+        </div>
+
+        <div class="login center" id="OTP" style="display: none; left: 150%">
+            <header>
+                <h1>
+                    OTP
+                </h1>
+                <div class="rowtext">Enter the OTP you received</div>
+            </header>
+
+            <form id="recovery-form">
+                <input id="OTP-username" placeholder="OTP" tabindex="9" class="pf-c-form-control ec-text-box" name="username" value="" type="text" autofocus="" aria-invalid="" autocomplete="off">
+                <input id="new-password" tabindex="10" class="ec-text-box" name="password" type="password" autocomplete="off" placeholder="New Password" aria-invalid="">
+
+                <input id="kc-login2" tabindex="11" onclick="switch_to_login(true);" class="ec-gradiant-button fill-row" name="login" type="button" value="Submit">
+            </form>
+
+            <a tabindex="12" onclick="switch_to_recovery();">
+                Back to Password Recovery
+            </a>
+        </div>
+    </body>
+</html>
+
+
+
+
+
+
