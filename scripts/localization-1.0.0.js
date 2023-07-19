@@ -30,7 +30,7 @@ function localization_load_locale(symbol)
             $.ajax({
                 'async': false,
                 'global': false,
-                'url': ("/localization/" + localization_choice + ".json"),
+                'url': ("https://exoticcandyc.github.io/petus-webservice-demo/localization/" + localization_choice + ".json"),
                 'dataType': "json",
                 'success': function (data) {
                     json = data;
@@ -53,7 +53,7 @@ function localization_init()
             $.ajax({
                 'async': false,
                 'global': false,
-                'url': ("/localization/table.json"),
+                'url': ("https://exoticcandyc.github.io/petus-webservice-demo/localization/table.json"),
                 'dataType': "json",
                 'success': function (data) {
                     json = data;
