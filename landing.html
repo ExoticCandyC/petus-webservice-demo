@@ -1,0 +1,1517 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Sign in to Petus</title>
+        <meta charset="utf-8">
+        <link href="./stylesheets/base-v1.0.0.css" rel="stylesheet">
+        <link href="./stylesheets/landing-v1.0.0.css" rel="stylesheet">
+        <script src="./CDN/jquery-3.7.0.min.js"></script>
+        <script src="./CDN/ec-svg-map-1.0.0.js"></script>
+        <script src="./CDN/gauge.min.v1.0.7.js"></script>
+        <script src="./CDN/lightweight-charts.standalone.production-4.0.1.js"></script>
+        <script src="./CDN/ec-chart-1.0.0.js"></script>
+        <script src="./scripts/localization-1.0.0.js"></script>
+        <script src="./scripts/segment-1.0.0.js"></script>
+
+        <link  href="./sample_gauge.css" rel="stylesheet">
+        <script src="./sample_gauge.js"></script>
+        <script src="./sample_chart.js"></script>
+        <script>
+            const Notification_Level_Info    = 0;
+            const Notification_Level_Warning = 1;
+            const Notification_Level_Error   = 2;
+            var __dashboard_summary_auto  = true;
+            var __dashboard_summary_index = "";
+            var settings_scroll_calibration_list = [];
+
+
+            $.__delay_ms = function(ms)
+            {
+                var defer = $.Deferred();
+                setTimeout(function() { defer.resolve(); }, ms);
+                return defer;
+            };
+
+            function isNumber(value)
+            {
+                return (!isNaN(Number(value)));
+            }
+
+            function validatePort(txt)
+            {
+                if (txt.includes('.') || !isNumber(txt)) return false;
+                txt = Number(txt);
+                if (txt > 65535 || txt < 0) return false;
+                return true;
+            }
+
+            function validateTime(T)
+            {
+                return (T.length == 0 || (/^(([0-9])|([0-1]?[0-9]|2[0-3])):(([0-9])|([0-5][0-9]))(:(([0-9])|([0-5][0-9])))?$/.test(T)));
+            }
+
+            function validateOID(T)
+            {
+                return (T.length == 0 || (T.length > 4 && /^(.1.3)((\.0)|(\.[1-9][0-9]*))*$/.test(T)));
+            }
+
+            function validatePhone(T)
+            {
+                return (T.length == 0 || (T.length == 13 && /^(\+)([0-9]*)$/.test(T)));
+            }
+
+            function validateIP(adr)
+            {
+                if (adr.length == 0 || /^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/.test(adr)) return true;
+                return false;
+            }
+
+            function replace_all(str, find, replace)
+            {
+                function escapeRegExp(string)
+                {
+                    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                }
+                return str.replace(new RegExp(escapeRegExp(find), 'g'), replace);
+            }
+
+            function css_px_value()
+            {
+                const element = document.querySelector(':root');
+                const style = getComputedStyle(element);
+                var px = style.getPropertyValue('--px');
+                px = px.replace("px", "");
+                return Number(px);
+            }
+
+            function settings_calibrate_scroll()
+            {
+                var maxScroll = $(".settings-main")[0].scrollHeight - $(".settings-main")[0].offsetHeight;
+                for(var index = 0; index < $(".settings-main h2").length; index++)
+                {
+                    var temp = $(".settings-main h2")[index].offsetTop - (90 * css_px_value());
+                    if(temp > maxScroll)
+                        temp = maxScroll;
+                    settings_scroll_calibration_list[index] = temp;
+                }
+                if($(".settings-main h2").length > 3)
+                {
+                    var back = $(".settings-main h2").length - 3;
+                    var now  = $(".settings-main h2").length - 2;
+                    var next = $(".settings-main h2").length - 1;
+                    if(settings_scroll_calibration_list[next] - settings_scroll_calibration_list[now] < 20)
+                    {
+                        var diff = settings_scroll_calibration_list[now] - settings_scroll_calibration_list[back];
+                        diff *= 0.8;
+                        diff = Math.floor(diff + 0.5);
+                        settings_scroll_calibration_list[now] = settings_scroll_calibration_list[back] + diff;
+                    }
+                }
+            }
+
+            function settings_scroll_event()
+            {
+                settings_calibrate_scroll();
+                var scrollTop = $(".settings-main")[0].scrollTop;
+                var min    = Math.abs(settings_scroll_calibration_list[0] - scrollTop);
+                var minidx = 0;
+                for(var index = 1; index < $(".settings-main h2").length; index++)
+                {
+                    var temp = Math.abs(settings_scroll_calibration_list[index] - scrollTop);
+                    if(temp <= min)
+                    {
+                        min = temp;
+                        minidx = index;
+                    }
+                }
+
+                var li_list = $("li");
+                var li_index = 0;
+                for(var index = 0; index < li_list.length; index++)
+                {
+                    if(li_list[index].attributes['target'].nodeValue === "setting")
+                    {
+                        if(li_index === minidx)
+                            $(li_list[index]).addClass("active");
+                        else
+                            $(li_list[index]).removeClass("active");
+                        li_index++;
+                    }
+                }
+            }
+
+            function settings_popup(text, duration)
+            {
+                var temp = localization_replace(text);
+                if(temp !== "$LOCALIZE_FAIL$")
+                    text = temp;
+                $(".settings-popup").html(text);
+                $(".settings-popup").addClass("active");
+                window.setTimeout(function()
+                {
+                    $(".settings-popup").removeClass("active");
+                }, (duration + 500));
+            }
+
+            function load_sub_page(url)
+            {
+                if(url === "/dashboard.html")
+                    dashboard_show();
+                else if(url === "/segments.html")
+                    segments_show_main();
+                else if(url === "/settings.html")
+                    settings_show();
+                /*$(".dot-spin-outer").show();
+                $(".main-content").stop();
+                $(".main-content").animate({"opacity": -0.5}, 400);
+                console.log("loading page = " + url);
+                */
+            }
+
+            const notify_dismiss_all = async () =>
+            {
+                var _list = $(".notif-dismiss");
+                for(var index = 0; index < _list.length; index++)
+                    await $.__delay_ms(40).then(
+                    function()
+                    {
+                        notify_dismiss(_list[index]);
+                    });
+            }
+
+            function add_notification(msg, level)
+            {
+                var element = "<div class=\"content notif-";
+                if(level == Notification_Level_Error)
+                    element += "error";
+                else if(level == Notification_Level_Warning)
+                    element += "warning";
+                else
+                    element += "info";
+                element += "\">" + msg;
+                element += "<div class=\"notif-dismiss\" onclick=\"notify_dismiss(this)\"></div></div>";
+                $(".notif-content").append(element);
+                set_notify_count();
+            }
+
+            function set_notify_count()
+            {
+                var count = $(".notif-dismiss").length;
+                var state = Notification_Level_Info;
+                if($(".notif-error").length > 0)
+                    state = Notification_Level_Error;
+                else if($(".notif-warning").length > 0)
+                    state = Notification_Level_Warning;
+                if(count < 100)
+                    $(".notif-count").html(count);
+                else
+                    $(".notif-count").html("99+");
+                if(count == 0)
+                {
+                    $(".notif-bell").removeClass("notif-active-info");
+                    $(".notif-bell").removeClass("notif-active-warning");
+                    $(".notif-bell").removeClass("notif-active-error");
+                    $(".notif-count").removeClass("notif-count-error");
+                    $(".notif-count").removeClass("notif-count-warning");
+                    $(".notif-count").addClass("notif-count-info");
+                    $(".notif-count").stop();
+                    $(".notif-count").animate({"opacity": -0.5}, 400, function() {$( ".notif-count" ).css("display", "none");});
+                }
+                else
+                {
+                    if(state == Notification_Level_Error)
+                    {
+                        $(".notif-bell").removeClass("notif-active-info");
+                        $(".notif-bell").removeClass("notif-active-warning");
+                        $(".notif-bell").addClass("notif-active-error");
+                        $(".notif-count").removeClass("notif-count-info");
+                        $(".notif-count").removeClass("notif-count-warning");
+                        $(".notif-count").addClass("notif-count-error");
+                    }
+                    else if(state == Notification_Level_Warning)
+                    {
+                        $(".notif-bell").removeClass("notif-active-info");
+                        $(".notif-bell").addClass("notif-active-warning");
+                        $(".notif-bell").removeClass("notif-active-error");
+                        $(".notif-count").removeClass("notif-count-info");
+                        $(".notif-count").addClass("notif-count-warning");
+                        $(".notif-count").removeClass("notif-count-error");
+                    }
+                    else
+                    {
+                        $(".notif-bell").addClass("notif-active-info");
+                        $(".notif-bell").removeClass("notif-active-warning");
+                        $(".notif-bell").removeClass("notif-active-error");
+                        $(".notif-count").addClass("notif-count-info");
+                        $(".notif-count").removeClass("notif-count-warning");
+                        $(".notif-count").removeClass("notif-count-error");
+                    }
+                    $(".notif-count").stop();
+                    $(".notif-count").css("display", "block");
+                    $(".notif-count").animate({"opacity": 1}, 300);
+                }
+            }
+
+            function notify_dismiss(e)
+            {
+                $(e).parent().animate({"margin-left": "calc(600 * var(--px))", "height": "0",
+                                       "margin-top": "0", "margin-bottom": "0", "padding": "0",
+                                       "width": "calc(" + ($(e).parent().width() + 600) + " * var(--px))"}, 200,
+                function()
+                {
+                    $(e).parent().remove();
+                    set_notify_count();
+                    if($(".notif-dismiss").length == 0)
+                    {
+                        $(".notif-bell").removeClass("notif-hover");
+                        $(".notif-content").stop();
+                        $(".notif-content-before").stop();
+                        $(".notif-content").animate({"opacity": -0.5, "padding": "0", "width": "0", "height": "0"}, 400, function() {$( ".notif-content" ).css("display", "none");});
+                        $(".notif-content-before").animate({"opacity": -0.5}, 400, function() {$( ".notif-content-before" ).css("display", "none");});
+                    }
+                });
+            }
+
+            function _dashboard_hide_summary(id)
+            {
+                id = "#" + id;
+
+                $(id).stop();
+                $(id).animate({"opacity": -0.5}, 600, function() {$(id).css("display", "none");});
+            }
+
+            function _dashboard_show_summary(id)
+            {
+                var _id = "#" + id;
+
+                $(_id).css("opacity", 0);
+                $(_id).stop();
+                $(_id).css("display", "block");
+                chart_resize(id);
+                $(_id).animate({"opacity": 1}, 500);
+                $("#header-selected").html($(_id).attr("value"));
+            }
+
+            function dashboard_show_summary(id)
+            {
+                __dashboard_summary_index = id;
+                for(var index = 0; index < $(".summary")[0].children.length; index++)
+                {
+                    var _id = $(".summary")[0].children[index].children[0].id;
+                    if(id === _id)
+                        _dashboard_show_summary(_id);
+                    else
+                        _dashboard_hide_summary(_id);
+                }
+            }
+
+            function dashboard_summary_select(e)
+            {
+                if($(".header-selection").attr("style") != "")
+                    return;
+                e = $(e).attr("value") + "";
+                if(e !== "0")
+                {
+                    dashboard_show_summary("summary" + e);
+                    __dashboard_summary_auto = false;
+                }
+                else
+                    __dashboard_summary_auto = true;
+                e = $(".header-selection");
+
+                e.addClass("animation-paused");
+                e.animate({"height": 0, "padding": 0}, 300);
+                const remove_stiff = async () =>
+                {
+                    await $.__delay_ms(400).then(
+                    function()
+                    {
+                        e.attr("style", "");
+                        e.removeClass("animation-paused");
+                    });
+                }
+                remove_stiff();
+            }
+
+            function dashboard_add_summary(name)
+            {
+                var segment_number = $(".summary")[0].children.length + 1;
+                var segment_id = "summary" + segment_number;
+                $(".header-selection").attr("style", "");
+                if(!name)
+                    name = "Summary " + segment_number;
+                var html = "<div class=\"chart-holder\"><div id=\"" + segment_id + "\" value=\"" + name + "\" class=\"chart\"></div></div>";
+                $(".summary").append(html);
+                setUpExampleChart(segment_id);
+                segment_id = "#" + segment_id;
+                $(segment_id).hide();
+
+                html = "<div class=\"header-option\" value=\"" + segment_number + "\" onclick=\"dashboard_summary_select(this)\">" + name + "</div>";
+                $(".header-selection").append(html);
+            }
+
+            function dashboard_add_segment(name)
+            {
+                var segment_number = $(".segments")[0].children.length;
+                var segment_id = "segment" + segment_number;
+                var temp = $("#segment-temp");
+
+                $(".segment").each(
+                function(index)
+                {
+                    if("segment-temp" === $(".segment")[index].id)
+                        return;
+                    $("#" + $(".segment")[index].id).stop();
+                    $("#" + $(".segment")[index].id).attr("style", "");
+                });
+                if(!name)
+                    name = "Segment " + segment_number;
+                var html = "";
+                html += "<div class=\"segment\" id=\"" + segment_id + "\" onclick=\"segments_show_singular(" + segment_number + ")\">";
+                html += "<div id=\"" + segment_id + "-humidity\" class=\"gauge-himidity\"></div>";
+                html += "<div id=\"" + segment_id + "-moisture\" class=\"gauge-moisture\"></div>";
+                html += "<h3>" + name + "</h3>";
+                html += "<div class=\"separator\"></div>";
+                html += "<div class=\"chart-holder\">";
+                html += "<div id=\"" + segment_id + "-temp\"></div>";
+                html += "</div></div>";
+
+                $("#seg_segments").append(html);
+                $("#dash_segments").append(replace_all(html, segment_id, "dash-" + segment_id));
+
+                setUpExampleGauge(segment_id + "-humidity");
+                setUpExampleGauge(segment_id + "-moisture");
+                setUpExampleTempChart(segment_id + "-temp");
+
+                setUpExampleGauge("dash-" + segment_id + "-humidity");
+                setUpExampleGauge("dash-" + segment_id + "-moisture");
+                setUpExampleTempChart("dash-" + segment_id + "-temp");
+
+                segment_id = "#" + segment_id;
+                $(segment_id).hide();
+                $(segment_id).addClass("animation-paused");
+                $(segment_id).css("width", "0");
+                $(segment_id).css("height", "0");
+                $(segment_id).css("overflow", "hidden");
+                $(segment_id).css("min-width", "0");
+                $(segment_id).show();
+
+                function reduce_by_ten(e)
+                {
+                    e = Number(e.replace("px", "")) - 10;
+                    return ((e < 0 ? 0 : e) + "px");
+                }
+                $(segment_id).animate({"width" : reduce_by_ten(temp.css("width")),
+                                       "height": reduce_by_ten(temp.css("height"))},
+                                       200,
+                                       function()
+                                       {
+                                           $(segment_id).css("width", temp.css("width"));
+                                           $(segment_id).css("height", temp.css("height"));
+                                           $(segment_id).css("overflow", temp.css("overflow"));
+                                           $(segment_id).css("min-width", temp.css("min-width"));
+                                           $(segment_id).attr("style", "");
+                                       });
+                const remove_stiff = async () =>
+                {
+                    await $.__delay_ms(250).then(
+                    function()
+                    {
+                        $(segment_id).removeClass("animation-paused");
+                    });
+                }
+                remove_stiff();
+            }
+
+            function navigate_remove_nav_active(parentID)
+            {
+                var children = $("#" + parentID)[0].children;
+                for(var index = 0; index < children.length; index++)
+                    $(children[index]).removeClass("nav-active");
+            }
+
+            function dashboard_show()
+            {
+                navigate_remove_nav_active("dashNav");
+                /*$(".status-container").removeClass("force-hide");*/
+                $("#nav-dash").addClass("nav-active");
+                $("#dashDiv").removeClass("slide-out-left");
+                $("#dashDiv").removeClass("slide-out-right");
+                $("#segLand").addClass("slide-out-right");
+                $("#segDiv").addClass("slide-out-right");
+                $("#settings_div").addClass("slide-out-right");
+                $(".cogwheel").removeClass("cogwheel-active");
+                $(".settings-main .ec-text-box").attr("disabled", true);
+                $(".settings-main .ec-check-box").attr("disabled", true);
+            }
+            function settings_show()
+            {
+                navigate_remove_nav_active("dashNav");
+                /*$(".status-container").addClass("force-hide");*/
+                /*$("#nav-segment").addClass("nav-active");*/
+                $("#dashDiv").addClass("slide-out-left");
+                $("#segLand").addClass("slide-out-left");
+                $("#segDiv").addClass("slide-out-left");
+                $("#settings_div").removeClass("slide-out-right");
+                $(".cogwheel").addClass("cogwheel-active");
+                $(".settings-main .ec-text-box").attr("disabled", false);
+                $(".settings-main .ec-check-box").attr("disabled", false);
+                window.setTimeout(function(){settings_reset_scroll();}, 450);
+            }
+            function segments_show_main()
+            {
+                navigate_remove_nav_active("dashNav");
+                /*$(".status-container").addClass("force-hide");*/
+                $("#nav-segment").addClass("nav-active");
+                $("#dashDiv").addClass("slide-out-left");
+                $("#segLand").removeClass("slide-out-left");
+                $("#segLand").removeClass("slide-out-right");
+                $("#segDiv").addClass("slide-out-right");
+                $("#settings_div").addClass("slide-out-right");
+                $(".cogwheel").removeClass("cogwheel-active");
+                $(".settings-main .ec-text-box").attr("disabled", true);
+                $(".settings-main .ec-check-box").attr("disabled", true);
+            }
+            function segments_show_singular(segNum)
+            {
+                /*ec_segment_page = null;*/
+                segNum -= 1;
+                sub_segments_show("segOver");
+                navigate_remove_nav_active("dashNav");
+                /*$(".status-container").addClass("force-hide");*/
+                $("#nav-segment").addClass("nav-active");
+                if(!$("#segLand").hasClass("slide-out-left"))
+                {
+                    $("#segLand").addClass("animation-paused");
+                    $("#segLand").removeClass("slide-out-right");
+                    $("#segLand").addClass("slide-out-left");
+                    $("#segLand").removeClass("animation-paused");
+                }
+                $("#dashDiv").addClass("slide-out-left");
+
+                /* This is just a testing value */
+                $("#segName").html("Segment " + segNum);
+                $("#segLand").addClass("slide-out-left");
+                $("#segDiv").removeClass("slide-out-right");
+                $("#segDiv").removeClass("slide-out-left");
+                $("#settings_div").addClass("slide-out-right");
+                $(".cogwheel").removeClass("cogwheel-active");
+                $(".settings-main .ec-text-box").attr("disabled", true);
+                $(".settings-main .ec-check-box").attr("disabled", true);
+            }
+
+            function sub_segments_show(id)
+            {
+                navigate_remove_nav_active('segNav');
+                $("." + id).addClass("nav-active");
+                $("#segSens").removeClass("sub-slide-out-right");
+                $("#segSens").removeClass("sub-slide-out-left");
+                $("#segOver").addClass("sub-slide-out-left");
+                if(id === "segOver")
+                    $("#segSens").addClass("sub-slide-out-right");
+                else
+                    $("#segSens").addClass("sub-slide-out-left");
+                $("#segAct").addClass("sub-slide-out-right");
+                $("#" + id).removeClass("sub-slide-out-right");
+                $("#" + id).removeClass("sub-slide-out-left");
+            }
+
+            $(function()
+            {
+                dashboard_add_summary("Temperature");
+                dashboard_add_summary("Humidity");
+                dashboard_add_summary("Lux");
+                dashboard_add_summary("Wind Speed");
+                dashboard_add_summary("CO2");
+
+                for(var index = 0; index < 5; index++)
+                    dashboard_add_segment();
+
+                set_notify_count();
+
+                (function dashboard_summary_animate()
+                {
+                    try
+                    {
+                        if(__dashboard_summary_auto)
+                        {
+                            var e = __dashboard_summary_index;
+                            if(e.startsWith("summary"))
+                                e = e.replace("summary", "");
+                            else
+                                e = "0";
+                            e = Number(e);
+                            e = e % $(".summary")[0].children.length;
+                            e++;
+                            dashboard_show_summary("summary" + e);
+                        }
+                    } catch(e) { };
+                    window.setTimeout(dashboard_summary_animate, 5000);
+                })();
+
+                $(".dropdown").hover(
+                    function()
+                    {
+                        $(".dropdown-content").stop();
+                        $(".dropdown-content").css("display", "block");
+                        $(".dropdown-content").animate({"opacity": 1}, 300);
+                    },
+                    function()
+                    {
+                        $(".dropdown-content").stop();
+                        $(".dropdown-content").animate({"opacity": -0.5}, 400, function() {$( ".dropdown-content" ).css("display", "none");});
+                    }
+                );
+
+                $(".notification").hover(
+                    function()
+                    {
+                        if($(".notif-dismiss").length != 0)
+                        {
+                            $(".notif-bell").addClass("notif-hover");
+                            $(".notif-content").stop();
+                            $(".notif-content-before").stop();
+                            $(".notif-content").css("display", "block");
+                            $(".notif-content-before").css("display", "block");
+                            $(".notif-content").animate({"opacity": 1, "padding": "1.5em", "width": "45vw", "height": "70vh"}, 300);
+                            $(".notif-content-before").animate({"opacity": 1}, 500);
+                        }
+                    },
+                    function()
+                    {
+                        $(".notif-bell").removeClass("notif-hover");
+                        $(".notif-content").stop();
+                        $(".notif-content-before").stop();
+                        $(".notif-content").animate({"opacity": -0.5, "padding": "0", "width": "0", "height": "0"}, 400, function() {$( ".notif-content" ).css("display", "none");});
+                        $(".notif-content-before").animate({"opacity": -0.5}, 400, function() {$( ".notif-content-before" ).css("display", "none");});
+                    }
+                );
+
+                $(".settings-main")[0].addEventListener("scroll", function() { settings_scroll_event(); });
+
+                $("li").on("click", function(e)
+                {
+                    e = e.target;
+                    var target = $(e).attr("target");
+                    if(target === "setting")
+                    {
+                        li_list = $("li");
+                        var count = 0;
+                        for(var index = 0; index < li_list.length; index++)
+                        {
+                            if(li_list[index].attributes['target'].nodeValue === "setting")
+                                count++;
+                            if(li_list[index] === e)
+                                $(".settings-main h2")[count - 1].scrollIntoView();
+                        }
+
+
+                        window.setTimeout(function()
+                        {
+                            for(var index = 0; index < li_list.length; index++)
+                                if(li_list[index].attributes['target'].nodeValue === "setting")
+                                    $(li_list[index]).removeClass("active");
+                            $(e).addClass("active");
+                        }, 10);
+                    }
+                    else if(target.startsWith("seg"))
+                        sub_segments_show(target);
+                    else
+                        load_sub_page(target);
+                });
+            });
+        </script>
+    </head>
+    <body>
+        <div class="overlay">
+        </div>
+        <div id="root" class="landing-root">
+            <header id="header" class="landing-header">
+                <img src="./assets/login-logo.png" width="166">
+                <div style="position: relative; top: calc(0 * var(--px));">
+                    <span class="notification">
+                        <img class="notif-bell" src="./assets/bell.png">
+                        <div class="notif-count">
+                            0
+                        </div>
+                        <div class="notif-content-before"></div>
+                        <div class="notif-content">
+                            <div class="content notif-error">
+                                Notification one
+                                <div class="notif-dismiss" onclick="notify_dismiss(this)"></div>
+                            </div>
+                            <div class="content notif-warning">
+                                Notification two
+                                <div class="notif-dismiss" onclick="notify_dismiss(this)"></div>
+                            </div>
+                            <div class="content notif-info">
+                                Notification three
+                                <div class="notif-dismiss" onclick="notify_dismiss(this)"></div>
+                            </div>
+                            <div class="content notif-info">
+                                Notification four
+                                <div class="notif-dismiss" onclick="notify_dismiss(this)"></div>
+                            </div>
+                            <div class="content notif-error">
+                                Notification five
+                                <div class="notif-dismiss" onclick="notify_dismiss(this)"></div>
+                            </div>
+                            <div class="content notif-warning">
+                                Notification six
+                                <div class="notif-dismiss" onclick="notify_dismiss(this)"></div>
+                            </div>
+                            <div class="content notif-info">
+                                Notification seven
+                                <div class="notif-dismiss" onclick="notify_dismiss(this)"></div>
+                            </div>
+                            <div class="content notif-info">
+                                Notification eight
+                                <div class="notif-dismiss" onclick="notify_dismiss(this)"></div>
+                            </div>
+                            <div class="content notif-info">
+                                Notification nine
+                                <div class="notif-dismiss" onclick="notify_dismiss(this)"></div>
+                            </div>
+                            <div class="notif-clear" onclick="notify_dismiss_all()">
+                                Clear All
+                            </div>
+                        </div>
+                    </span>
+                    <span>
+                        <img onclick="load_sub_page('/settings.html')" class="cogwheel" src="./assets/cog.png">
+                    </span>
+                    <span class="dropdown">
+                        <img style="width: calc(60 * var(--px));" src="./assets/user.svg">
+                        <div class="dropdown-content">
+                            <div class="uinfo">
+                                <h3>User's Name</h3>
+                                <h5>User's Phone</h5>
+                            </div>
+                            <div class="separator"></div>
+                            <div class="content">
+                                Level: Developer
+                            </div>
+                            <div class="separator"></div>
+                            <div class="content link-div">
+                                Account Settings
+                            </div>
+                            <div class="separator"></div>
+                            <div class="content link-div">
+                                Sign Out
+                            </div>
+                            <div class="separator"></div>
+                        </div>
+                    </span>
+                </div>
+            </header>
+            <nav class="nav-container status-container">
+                <div class="column-container no-margin">
+                    <div class="column-container-side no-margin">
+                        <img src="./assets/net/THR.png">
+                    </div>
+                    <div class="column-container-side no-margin">
+                        <h3 style="color: orange">45</h3>
+                    </div>
+                    <div class="column-container-side no-margin">
+                        <h3 style="color: orange">&nbsp;ºC</h3>
+                    </div>
+                    <div class="column-container-filler"></div>
+                    <div class="column-container-side no-margin">
+                        <h3 style="color: greenyellow">200ms</h3>
+                    </div>
+                    <div class="column-container-side">
+                        <img src="./assets/net/STx.png">
+                    </div>
+                    <div class="column-container-side">
+                        <img src="./assets/net/AP off.png">
+                    </div>
+                    <div class="column-container-side">
+                        <img src="./assets/net/ETx.png">
+                    </div>
+                    <div class="column-container-side">
+                        <img src="./assets/net/SIMx.png">
+                    </div>
+                    <div class="column-container-side">
+                        <h2>12:34:56</h2>
+                    </div>
+                </div>
+            </nav>
+            <nav class="nav-container">
+                <div>
+                    <ul id="dashNav">
+                        <li id="nav-dash" class="nav-option nav-active" target="/dashboard.html">
+                            Dashboard
+                        </li>
+
+                        <li id="nav-segment" class="nav-option" target="/segments.html">
+                            Segments
+                        </li>
+
+                        <li id="nav-logs" class="nav-option" target="/logs.html">
+                            Event Logs
+                        </li>
+                    </ul>
+
+                </div>
+            </nav>
+            <div class="dot-spin-outer">
+                <div class="dot-spin"></div>
+            </div>
+            <div class="main-content">
+                <!-- ******************************************************* -->
+                <!-- *                      Dashboard                      * -->
+                <!-- ******************************************************* -->
+                <div class="dashboard" id="dashDiv">
+                    <header>
+                        <h1>Dashboard</h1>
+                        <span class="header-selector">
+                            <div class="header-selected">
+                                <img class = "header-select-arrow" src="./assets/arrow.png">
+                                </img>
+                                <div id="header-selected"></div>
+                            </div>
+                            <div class="header-selection">
+                                <div class="header-option" value="0" onclick="dashboard_summary_select(this)">Auto</div>
+                            </div>
+                        </span>
+                    </header>
+                    <div class="summary">
+                    </div>
+                    <div class="body">
+                        <div class="right">
+                            <div class="info-bar">
+                                <div class="row time">
+                                    <h2>12:34:56</h2>
+                                </div>
+                                <div class="row">
+                                    <h2>July 3rd 2023</h2>
+                                </div>
+                                <div class="row thermo">
+                                    <div class="TMP" style="color: orange">
+                                        <img src="./assets/net/THR.png">
+                                        <div>
+                                            <h3 id="TMP">45</h3>
+                                            <h3>&nbsp;ºC</h3>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row stats-net">
+                                    <div class="ST">
+                                        <h3 style="color: greenyellow">200ms</h3>
+                                        <img src="./assets/net/STx.png">
+                                    </div>
+                                    <img src="./assets/net/AP off.png">
+                                    <img src="./assets/net/ETx.png">
+                                    <img src="./assets/net/SIMx.png">
+                                </div>
+                                <h2 class="CONHDR">Active Connections:</h2>
+                                <div class="CONCNT">
+                                    <div class="row">
+                                        <h2>192.168.1.2</h2>
+                                    </div>
+                                    <div class="row">
+                                        <h2>192.168.1.3</h2>
+                                    </div>
+                                    <div class="row">
+                                        <h2 style="color: chartreuse">192.168.1.4</h2>
+                                    </div>
+                                    <div class="row">
+                                        <h2>192.168.1.5</h2>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="left">
+                            <div class="header">
+                                <h1>Segments</h1>
+                                <div class="add-segment">
+                                    <img src="./assets/add.png"></img>
+                                    Add new segment
+                                </div>
+                            </div>
+                            <div class="segments" id="dash_segments"><div class="segment" id="segment-temp" style="display: none;"></div></div>
+                        </div>
+                    </div>
+                </div>
+                <!-- ******************************************************* -->
+                <!-- *                      Settings                       * -->
+                <!-- ******************************************************* -->
+                <div class="segments-page dashboard slide-out-right" id="settings_div">
+                    <div class="settings-popup"></div>
+                    <div style="height: 100%">
+                        <div style="height: 100%">
+                            <div class="row-container">
+                                <div class="row-header">
+                                    <h1>$LOCALIZE$keyword_settings$</h1>
+                                </div>
+                                <div class="row-header-fill-line" style="margin-top: calc(5 * var(--px))"></div>
+                                <div class="row-content">
+                                    <div class="column-container settings-body">
+                                        <div class="column-container-side settings-side">
+                                            <ul id="set-side">
+<script>
+function settings_reset_scroll()
+{
+    $(".settings-main")[0].scrollTop = 0;
+}
+
+function settings_remove_error(element)
+{
+    var parent = $(element.parentElement.parentElement.parentElement);
+
+    for(var index = (parent.children().length - 1); index >= 0; index--)
+        if(parent.children()[index].classList.contains("error"))
+            parent.children()[index].remove();
+
+    settings_scroll_event();
+}
+
+function settings_add_error(element, error)
+{
+    var parent = $(element.parentElement.parentElement);
+
+    settings_remove_error(element);
+
+    var temp = localization_replace(error);
+    if(temp !== "$LOCALIZE_FAIL$")
+        error = temp;
+
+    parent.after("<div class=\"row-header error\"><div class=\"column-container\"><div class=\"column-container-side\"></div><div class=\"column-container-filler\">* " + error + "</div></div></div>");
+    settings_scroll_event();
+}
+
+function settings_save(parent)
+{
+    var errorCount = 0;
+    var index;
+    for(index = 0; index < $(parent + " input").length; index++)
+        settings_remove_error($(parent + " input")[index]);
+
+    for(index = 0; index < $(parent + " input").length; index++)
+    {
+        if(typeof $(parent + " input")[index].value === "string")
+        {
+            if(typeof $($(parent + " input")[index]).attr("mandatory") !== "undefined" &&
+                $(parent + " input")[index].value.length === 0)
+            {
+                settings_add_error($(parent + " input")[index], "$LOCALIZE$setting_err_mandatory$");
+                errorCount++;
+            }
+            else if(typeof $($(parent + " input")[index]).attr("phone") !== "undefined" &&
+                validatePhone($(parent + " input")[index].value) === false)
+            {
+                settings_add_error($(parent + " input")[index], "$LOCALIZE$setting_err_invalid_phone$");
+                errorCount++;
+            }
+            else if(typeof $($(parent + " input")[index]).attr("ip") !== "undefined" &&
+                validateIP($(parent + " input")[index].value) === false)
+            {
+                settings_add_error($(parent + " input")[index], "$LOCALIZE$setting_err_invalid_IP$");
+                errorCount++;
+            }
+            else if(typeof $($(parent + " input")[index]).attr("port") !== "undefined" &&
+                validatePort($(parent + " input")[index].value) === false)
+            {
+                settings_add_error($(parent + " input")[index], "$LOCALIZE$setting_err_invalid_port$");
+                errorCount++;
+            }
+        }
+    }
+
+    if(parent === ".settings-main")
+    {
+        if($("#set_npass")[0].value.length !== 0)
+        {
+            if($("#set_pass")[0].value.length === 0)
+            {
+                settings_add_error($("#set_pass")[0], "$LOCALIZE$setting_err_pass_required$");
+                errorCount++;
+            }
+            if($("#set_npass")[0].value !== $("#set_cpass")[0].value)
+            {
+                settings_add_error($("#set_cpass")[0], "$LOCALIZE$setting_err_pass_mismatch$");
+                errorCount++;
+            }
+        }
+    }
+
+    if(errorCount === 0)
+    {
+        settings_reset_scroll();
+        settings_popup('$LOCALIZE$setting_popup_saved$', 2000);
+    }
+    else
+        $(parent + " .error")[0].parentElement.scrollIntoView();
+}
+</script>
+
+                                                <li target="setting" class="active">$LOCALIZE$setting_head_acc$</li>
+                                                <li target="setting">$LOCALIZE$setting_head_wifiIP$</li>
+                                                <li target="setting">$LOCALIZE$setting_head_lanIP$</li>
+                                                <li target="setting">$LOCALIZE$setting_head_wifiap$</li>
+                                                <li target="setting">$LOCALIZE$setting_head_wifista$</li>
+                                                <li target="setting">$LOCALIZE$setting_head_snmp$</li>
+                                                <li target="setting">$LOCALIZE$setting_head_prometheus$</li>
+                                                <li target="setting">$LOCALIZE$setting_head_password$</li>
+                                            </ul>
+                                            <div class="column-container-side settings-save" onclick="settings_save('.settings-main')">
+                                                $LOCALIZE$keyword_save$
+                                            </div>
+                                        </div>
+                                        <div class="column-container-filler settings-main">
+                                            <h2>$LOCALIZE$setting_head_acc$</h2>
+                                            <!-- start of account settings -->
+                                            <div class="row-container">
+                                                <div class="row-header">
+                                                    <div class="column-container">
+                                                        <div class="column-container-side">
+                                                            $LOCALIZE$setting_option_u_dname$
+                                                        </div>
+                                                        <div class="column-container-filler">
+                                                            <input disabled id="set_dname" class="ec-text-box" type="text" mandatory></input>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="row-header">
+                                                    <div class="column-container">
+                                                        <div class="column-container-side">
+                                                            $LOCALIZE$setting_option_u_pnum$
+                                                        </div>
+                                                        <div class="column-container-filler">
+                                                            <input disabled id="set_pnum" class="ec-text-box" type="text" mandatory phone></input>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <!-- end of account settings -->
+                                            <h2 id>$LOCALIZE$setting_head_wifiIP$</h2>
+                                            <!-- start of wifi IP settings -->
+                                            <div class="row-container">
+                                                <div class="row-header">
+                                                    <div class="column-container">
+                                                        <div class="column-container-side">
+                                                            $LOCALIZE$setting_option_ip$
+                                                        </div>
+                                                        <div class="column-container-filler">
+                                                            <input disabled id="set_wifi_ip" class="ec-text-box" type="text" mandatory ip></input>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="row-header">
+                                                    <div class="column-container">
+                                                        <div class="column-container-side">
+                                                        $LOCALIZE$setting_option_subnet$
+                                                        </div>
+                                                        <div class="column-container-filler">
+                                                            <input disabled id="set_wifi_snet" class="ec-text-box" type="text" mandatory ip></input>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="row-header">
+                                                    <div class="column-container">
+                                                        <div class="column-container-side">
+                                                            $LOCALIZE$setting_option_gateway$
+                                                        </div>
+                                                        <div class="column-container-filler">
+                                                            <input disabled id="set_wifi_gway" class="ec-text-box" type="text" mandatory ip></input>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="row-header">
+                                                    <div class="column-container">
+                                                        <div class="column-container-side">
+                                                            $LOCALIZE$setting_option_dns1$
+                                                        </div>
+                                                        <div class="column-container-filler">
+                                                            <input disabled id="set_wifi_dns1" class="ec-text-box" type="text" mandatory ip></input>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="row-header">
+                                                    <div class="column-container">
+                                                        <div class="column-container-side">
+                                                            $LOCALIZE$setting_option_dns2$
+                                                        </div>
+                                                        <div class="column-container-filler">
+                                                            <input disabled id="set_wifi_dns2" class="ec-text-box" type="text" mandatory ip></input>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <!-- end of wifi IP settings -->
+                                            <h2 id>$LOCALIZE$setting_head_lanIP$</h2>
+                                            <!-- start of lan IP settings -->
+                                            <div class="row-container">
+                                                <div class="row-header">
+                                                    <div class="column-container">
+                                                        <div class="column-container-side">
+                                                            $LOCALIZE$setting_option_ip$
+                                                        </div>
+                                                        <div class="column-container-filler">
+                                                            <input disabled id="set_lan_ip" class="ec-text-box" type="text" mandatory ip></input>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="row-header">
+                                                    <div class="column-container">
+                                                        <div class="column-container-side">
+                                                        $LOCALIZE$setting_option_subnet$
+                                                        </div>
+                                                        <div class="column-container-filler">
+                                                            <input disabled id="set_lan_snet" class="ec-text-box" type="text" mandatory ip></input>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="row-header">
+                                                    <div class="column-container">
+                                                        <div class="column-container-side">
+                                                            $LOCALIZE$setting_option_gateway$
+                                                        </div>
+                                                        <div class="column-container-filler">
+                                                            <input disabled id="set_lan_gway" class="ec-text-box" type="text" mandatory ip></input>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <!-- end of lan IP settings -->
+                                            <h2 id>$LOCALIZE$setting_head_wifiap$</h2>
+                                            <!-- start of wifi access point settings -->
+                                            <div class="row-container">
+                                                <div class="row-header">
+                                                    <div class="column-container">
+                                                        <div class="column-container-side">
+                                                            $LOCALIZE$setting_option_ap_enable$
+                                                        </div>
+                                                        <div class="column-container-filler">
+                                                            <input disabled id="set_apen" class="ec-check-box" type="checkbox"></input>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="row-header">
+                                                    <div class="column-container">
+                                                        <div class="column-container-side">
+                                                            $LOCALIZE$setting_option_wifissid$
+                                                        </div>
+                                                        <div class="column-container-filler">
+                                                            <input disabled id="set_ap_ssid" class="ec-text-box" type="text" mandatory></input>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="row-header">
+                                                    <div class="column-container">
+                                                        <div class="column-container-side">
+                                                            $LOCALIZE$setting_option_wifipass$
+                                                        </div>
+                                                        <div class="column-container-filler">
+                                                            <input disabled id="set_ap_pass" class="ec-text-box" type="password" mandatory></input>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <!-- end of wifi access point settings -->
+                                            <h2 id>$LOCALIZE$setting_head_wifista$</h2>
+                                            <!-- start of wifi station settings -->
+                                            <div class="row-container">
+                                                <div class="row-header">
+                                                    <div class="column-container">
+                                                        <div class="column-container-side">
+                                                            $LOCALIZE$setting_option_wifissid$
+                                                        </div>
+                                                        <div class="column-container-filler">
+                                                            <input disabled id="set_sta_ssid" class="ec-text-box" type="text" mandatory></input>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="row-header">
+                                                    <div class="column-container">
+                                                        <div class="column-container-side">
+                                                            $LOCALIZE$setting_option_wifipass$
+                                                        </div>
+                                                        <div class="column-container-filler">
+                                                            <input disabled id="set_sta_pass" placeholder="$LOCALIZE$keyword_open_wifi$" class="ec-text-box" type="password"></input>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <!-- end of wifi station settings -->
+                                            <h2 id>$LOCALIZE$setting_head_snmp$</h2>
+                                            <!-- start of snmp settings -->
+                                            <div class="row-container">
+                                                <div class="row-header">
+                                                    <div class="column-container">
+                                                        <div class="column-container-side">
+                                                            $LOCALIZE$setting_option_trapsIP$
+                                                        </div>
+                                                        <div class="column-container-filler">
+                                                            <input disabled id="set_trap_ip" class="ec-text-box" type="text" mandatory ip></input>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="row-header">
+                                                    <div class="column-container">
+                                                        <div class="column-container-side">
+                                                            $LOCALIZE$setting_option_trapsPort$
+                                                        </div>
+                                                        <div class="column-container-filler">
+                                                            <input disabled id="set_trap_port" class="ec-text-box" type="text" mandatory port></input>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <!-- end of snmp settings -->
+                                            <h2 id>$LOCALIZE$setting_head_prometheus$</h2>
+                                            <!-- start of prometheus settings -->
+                                            <div class="row-container">
+                                                <div class="row-header">
+                                                    <div class="column-container">
+                                                        <div class="column-container-side">
+                                                            $LOCALIZE$setting_option_prom_en$
+                                                        </div>
+                                                        <div class="column-container-filler">
+                                                            <input disabled id="set_prom_en" class="ec-check-box" type="checkbox"></input>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="row-header">
+                                                    <div class="column-container">
+                                                        <div class="column-container-side">
+                                                            $LOCALIZE$setting_option_prom_ipen$
+                                                        </div>
+                                                        <div class="column-container-filler">
+                                                            <input disabled id="set_prom_ipen" class="ec-check-box" type="checkbox"></input>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="row-header">
+                                                    <div class="column-container">
+                                                        <div class="column-container-side">
+                                                            $LOCALIZE$setting_option_prom_keyen$
+                                                        </div>
+                                                        <div class="column-container-filler">
+                                                            <input disabled id="set_prom_keyen" class="ec-check-box" type="checkbox"></input>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="row-header">
+                                                    <div class="column-container">
+                                                        <div class="column-container-side">
+                                                            $LOCALIZE$setting_option_prom_ip$
+                                                        </div>
+                                                        <div class="column-container-filler">
+                                                            <input disabled id="set_prom_ip" class="ec-text-box" type="text" mandatory ip></input>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="row-header">
+                                                    <div class="column-container">
+                                                        <div class="column-container-side">
+                                                            $LOCALIZE$setting_option_prom_url$
+                                                        </div>
+                                                        <div class="column-container-filler">
+                                                            <a id="set_prom_url" onclick="navigator.clipboard.writeText(this.innerText); settings_popup('$LOCALIZE$setting_popup_copied_url$', 1500)">http://192.168.1.13/metrics?192.168.1.7:AJKSHDjaksndakjdHAKJSD7SDfjks121JKSAF7sdafjk78623jhjhUISD83jH32</a>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <!-- end of prometheus settings -->
+                                            <h2 id>$LOCALIZE$setting_head_password$</h2>
+                                            <!-- start of password settings -->
+                                            <div class="row-container">
+                                                <div class="row-header">
+                                                    <div class="column-container">
+                                                        <div class="column-container-side">
+                                                            $LOCALIZE$setting_option_pass$
+                                                        </div>
+                                                        <div class="column-container-filler">
+                                                            <input disabled id="set_pass" class="ec-text-box" type="password"></input>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="row-header">
+                                                    <div class="column-container">
+                                                        <div class="column-container-side">
+                                                            $LOCALIZE$setting_option_npass$
+                                                        </div>
+                                                        <div class="column-container-filler">
+                                                            <input disabled id="set_npass" class="ec-text-box" type="password"></input>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="row-header">
+                                                    <div class="column-container">
+                                                        <div class="column-container-side">
+                                                            $LOCALIZE$setting_option_cpass$
+                                                        </div>
+                                                        <div class="column-container-filler">
+                                                            <input disabled id="set_cpass" class="ec-text-box" type="password"></input>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <!-- end of password settings -->
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- ******************************************************* -->
+                <!-- *                    Segments Main                    * -->
+                <!-- ******************************************************* -->
+                <div class="segments-page dashboard slide-out-right" id="segLand">
+                    <div class="body">
+                        <div class="left">
+                            <header class="header">
+                                <h1>Segments</h1>
+                                <div class="add-segment">
+                                    <img src="./assets/add.png"></img>
+                                    Add new segment
+                                </div>
+                            </header>
+                            <div class="segments" id="seg_segments"><div class="segment" id="segment-temp" style="display: none;"></div></div>
+                        </div>
+                    </div>
+                </div>
+                <!-- ******************************************************* -->
+                <!-- *                  Segments Singular                  * -->
+                <!-- ******************************************************* -->
+                <div class="segments-page dashboard slide-out-right" id="segDiv">
+                    <div class="body row-container">
+                        <div class="row-header" style="user-select: none">
+                            <div class="column-container" id="segNav">
+                                <div class="column-container-side">
+                                    <div class="left-arrow"></div>
+                                </div>
+                                <div class="column-container-side">
+                                    <h2 class="left-arrow-text" onclick="segments_show_main()">Back</h2>
+                                </div>
+                                <div class="column-container-side">
+                                    <h1 id="segName"></h1>
+                                </div>
+                                <div class="column-container-filler">
+                                </div>
+                                <li class="segOver column-container-side sub-nav-option nav-option nav-active" target="segOver">
+                                    Overview
+                                </li>
+                                <li class="segSens column-container-side sub-nav-option nav-option" target="segSens">
+                                    Sensors
+                                </li>
+                                <li class="segAct column-container-side sub-nav-option nav-option" target="segAct">
+                                    Actuators
+                                </li>
+                            </div>
+                        </div>
+                        <div class="row-header-fill-line">
+                        </div>
+                        <div class="row-content" style="overflow: hidden;">
+                            <div class="fill-all" style="overflow: hidden;">
+                                <div class="fill-all sub-slider" id="segOver">
+                                    <div class="seg-grid">
+                                        <div class="seg-map">
+                                            <div id="seg-sensO-map">
+                                            </div>
+                                        </div>
+                                        <div class="seg-chart" id="seg-sensO-chart">
+                                        </div>
+                                    </div>
+                                    <script>
+                                    setUpExampleChart("seg-sensO-chart");
+                                    //var overview_chart = new ec_chart_t("seg-sensO-chart", "#FF9900", "#FF990011", "#CC6600AA", "rgb(60 70 84 / 82%)", "white", 16);
+                                    var overview_map = new ec_svg_map("seg-sensO-map");
+                                    overview_map.import("2t3f+E3f+E3f+E+C+E+C2U+C2U+C2U2S7X+C7X^77X^7jN^7jN^7jN+CT#+qT#&4T#&4*y&4*y&4*y+qka3rkaWhBD3fBDVUTb3rTbV*");
+                                    overview_map.drawCircle(135,  60);
+                                    overview_map.drawCircle(135, 160);
+                                    overview_map.drawCircle(250,  60);
+                                    overview_map.drawCircle(250, 160);
+                                    overview_map.drawCircle(367,  60);
+                                    overview_map.drawCircle(367, 160);
+                                    overview_map.setPinpointColor("greenyellow");
+                                    overview_map.highlightPinpoint(2, "#C92255");
+                                    </script>
+                                </div>
+                                <div class="fill-all sub-slider sub-slide-out-right" id="segSens" style="transform: translateY(-100%)"></div>
+                                <div class="fill-all sub-slider sub-slide-out-right" id="segAct"  style="transform: translateY(-200%)">
+
+                                    <div id="seg-act0" class="details-container">
+                                        <details>
+                                            <summary>
+                                                <div class="column-container">
+                                                    <div class="column-container-side">
+                                                        <div id="seg-act0-stat" class="actuator-status"></div>
+                                                    </div>
+                                                    <div class="column-container-side">
+                                                        <h2>Heaters</h2>
+                                                    </div>
+                                                    <div class="column-container-filler"></div>
+                                                    <div class="column-container-side">
+                                                        <h3 class="seg-sens-summary">Auto</h3>
+                                                        <h3 id="seg-act0-auto" class="seg-sens-summary">3/3</h3>
+                                                    </div>
+                                                    <div class="column-container-side">
+                                                        <h3 class="seg-sens-summary">On</h3>
+                                                        <h3 id="seg-act0-on" class="seg-sens-summary">2/3</h3>
+                                                    </div>
+                                                </div>
+                                            </summary>
+                                            <div class="folder" id="seg-act0-div">
+
+
+
+                                                <details id="seg-act0-val0-box" class="extended-details actuator-auto actuator-on actuator-online feedback-online feedback-active">
+                                                    <summary>
+                                                        <div class="column-container">
+                                                            <div class="column-container-side">
+                                                                <div id="seg-act0-val0-stat" class="actuator-status"></div>
+                                                            </div>
+                                                            <div class="column-container-side">
+                                                                <h3 class="actuator-h3-auto">Auto</h3>
+                                                            </div>
+                                                            <div class="column-container-side">
+                                                                <h3 class="actuator-h3-manual">Manual</h3>
+                                                            </div>
+                                                            <div class="column-container-filler"></div>
+                                                            <div class="column-container-side">
+                                                                <h3 class="seg-act-summary">Feedback</h3>
+                                                                <h3 class="seg-act-summary actuator-h3-active">Active</h3>
+                                                                <h3 class="seg-act-summary actuator-h3-deactive">Deactive</h3>
+                                                                <h3 class="seg-act-summary actuator-h3-offline">Offline</h3>
+                                                            </div>
+                                                            <div class="column-container-side">
+                                                                <h2 class="actuator-h2-online">Online</h2>
+                                                            </div>
+                                                            <div class="column-container-side">
+                                                                <h2 class="actuator-h2-offline">Offline</h2>
+                                                            </div>
+                                                        </div>
+                                                    </summary>
+                                                    <div class="folder">
+                                                        <div class="seg-act-map" id="seg-act0-val0-map">
+                                                        </div>
+                                                        <script>
+                                                        var seg_act0_val0_map = new ec_svg_map("seg-act0-val0-map");
+                                                        seg_act0_val0_map.import("2t3f+E3f+E3f+E+C+E+C2U+C2U+C2U2S7X+C7X^77X^7jN^7jN^7jN+CT#+qT#&4T#&4*y&4*y&4*y+qka3rkaWhBD3fBDVUTb3rTbV*");
+                                                        seg_act0_val0_map.import_pin("mq++BY+RR7+g", 0);
+                                                        </script>
+                                                    </div>
+                                                </details>
+
+
+
+                                                <details id="seg-act0-val1-box" class="extended-details actuator-auto actuator-online actuator-on feedback-offline feedback-active">
+                                                    <summary>
+                                                        <div class="column-container">
+                                                            <div class="column-container-side">
+                                                                <div id="seg-act0-val1-stat" class="actuator-status"></div>
+                                                            </div>
+                                                            <div class="column-container-side">
+                                                                <h3 class="actuator-h3-auto">Auto</h3>
+                                                            </div>
+                                                            <div class="column-container-side">
+                                                                <h3 class="actuator-h3-manual">Manual</h3>
+                                                            </div>
+                                                            <div class="column-container-filler"></div>
+                                                            <div class="column-container-side">
+                                                                <h3 class="seg-act-summary">Feedback</h3>
+                                                                <h3 class="seg-act-summary actuator-h3-active">Active</h3>
+                                                                <h3 class="seg-act-summary actuator-h3-deactive">Deactive</h3>
+                                                                <h3 class="seg-act-summary actuator-h3-offline">Offline</h3>
+                                                            </div>
+                                                            <div class="column-container-side">
+                                                                <h2 class="actuator-h2-online">Online</h2>
+                                                            </div>
+                                                            <div class="column-container-side">
+                                                                <h2 class="actuator-h2-offline">Offline</h2>
+                                                            </div>
+                                                        </div>
+                                                    </summary>
+                                                    <div class="folder">
+                                                        <div class="seg-act-map" id="seg-act0-val1-map">
+                                                        </div>
+                                                        <script>
+                                                        var seg_act0_val1_map = new ec_svg_map("seg-act0-val1-map");
+                                                        seg_act0_val1_map.import("2t3f+E3f+E3f+E+C+E+C2U+C2U+C2U2S7X+C7X^77X^7jN^7jN^7jN+CT#+qT#&4T#&4*y&4*y&4*y+qka3rkaWhBD3fBDVUTb3rTbV*");
+                                                        seg_act0_val0_map.import_pin("mq++BY+RR7+g", 1);
+                                                        </script>
+                                                    </div>
+                                                </details>
+
+
+
+
+
+
+                                            </div>
+                                        </details>
+                                    </div>
+
+
+
+
+
+
+
+
+
+
+                                    <div id="seg-sens0" class="details-container">
+                                        <details>
+                                            <summary>
+                                                <div class="column-container">
+                                                    <div class="column-container-side">
+                                                        <div class="actuator-status"></div>
+                                                    </div>
+                                                    <div class="column-container-side">
+                                                        <h2 id="seg-act0-name">Exhaust fans</h2>
+                                                    </div>
+                                                    <div class="column-container-filler"></div>
+                                                    <div class="column-container-side">
+                                                        <h3 class="seg-sens-summary">Auto</h3>
+                                                        <h3 id="seg-sens0-avg" class="seg-sens-summary">5/6</h3>
+                                                    </div>
+                                                    <div class="column-container-side">
+                                                        <h3 class="seg-sens-summary">On</h3>
+                                                        <h3 id="seg-sens0-avg" class="seg-sens-summary">5/6</h3>
+                                                    </div>
+                                                </div>
+                                            </summary>
+                                            <div class="folder" id="seg-sens0-div">
+                                            </div>
+                                        </details>
+                                    </div>
+
+                                    <div id="seg-sens0" class="details-container">
+                                        <details>
+                                            <summary>
+                                                <div class="column-container">
+                                                    <div class="column-container-side">
+                                                        <div class="actuator-status actuator-status-off"></div>
+                                                    </div>
+                                                    <div class="column-container-side">
+                                                        <h2 id="seg-act0-name">Circulation fans</h2>
+                                                    </div>
+                                                    <div class="column-container-filler"></div>
+                                                    <div class="column-container-side">
+                                                        <h3 class="seg-sens-summary">Auto</h3>
+                                                        <h3 id="seg-sens0-avg" class="seg-sens-summary">12/12</h3>
+                                                    </div>
+                                                    <div class="column-container-side">
+                                                        <h3 class="seg-sens-summary">On</h3>
+                                                        <h3 id="seg-sens0-avg" class="seg-sens-summary">0/12</h3>
+                                                    </div>
+                                                </div>
+                                            </summary>
+                                            <div class="folder" id="seg-sens0-div">
+                                            </div>
+                                        </details>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </body>
+</html>

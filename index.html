@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+
+<html>
+    <head>
+        <title>$LOCALIZE$login_title$</title>
+        <meta charset="utf-8">
+        <link href="/stylesheets/base-v1.0.0.css" rel="stylesheet">
+        <link href="/stylesheets/login.css" rel="stylesheet">
+        <script src="/CDN/jquery-3.7.0.min.js"></script>
+        <script src="/scripts/localization-1.0.0.js"></script>
+        <script>
+            var animation_speed = 500;
+            function switch_to_login(direct)
+            {
+                $(("#login")).show();
+                $(("#username")).val("");
+                $(("#password")).val("");
+                $(("#login")).animate({left: "50%"}, animation_speed, function(){$(("#username")).focus()});
+                $(("#recovery")).animate({left: "150%"}, (direct == false ? animation_speed : 0), function(){$(("#recovery")).hide()});
+                $(("#OTP")).animate({left: "150%"}, animation_speed, function(){$(("#OTP")).hide()});
+            }
+            function switch_to_recovery()
+            {
+                $(("#recovery")).show();
+                $(("#recovery-username")).val("");
+                $(("#phone_number")).val("");
+                $(("#recovery")).animate({left: "50%"}, animation_speed, function(){$(("#recovery-username")).focus()});
+                $(("#login")).animate({left: "-50%"}, animation_speed, function(){$(("#login")).hide()});
+                $(("#OTP")).animate({left: "150%"}, animation_speed, function(){$(("#OTP")).hide()});
+            }
+            function switch_to_OTP()
+            {
+                $(("#OTP")).show();
+                $(("#OTP-username")).val("");
+                $(("#new-password")).val("");
+                $(("#OTP")).animate({left: "50%"}, animation_speed, function(){$(("#OTP-username")).focus()});
+                $(("#login")).animate({left: "-50%"}, animation_speed, function(){$(("#login")).hide()});
+                $(("#recovery")).animate({left: "-50%"}, animation_speed, function(){$(("#recovery")).hide()});
+            }
+        </script>
+    </head>
+    <body class="hide-scroll">
+        <div class="animated_bg"></div>
+        <div class="login_logo">
+            <img src="/assets/login-logo.png" width="166">
+        </div>
+
+        <div class="login center" id="login">
+            <header>
+                <h1>$LOCALIZE$login_login_title$</h1>
+                <div class="rowtext">$LOCALIZE$login_login_prompt$</div>
+            </header>
+
+            <form id="login-form">
+                <input id="username" placeholder="$LOCALIZE$login_login_username$" tabindex="1" class="pf-c-form-control ec-text-box" name="username" value="" type="text" autofocus="" aria-invalid="" autocomplete="off">
+                <input id="password" tabindex="2" class="ec-text-box" name="password" type="password" autocomplete="off" placeholder="$LOCALIZE$login_login_password$" aria-invalid="">
+
+                <input id="login-Submit" tabindex="3" class="ec-gradiant-button fill-row" name="login" type="button" value="$LOCALIZE$login_login_submit$">
+            </form>
+
+            <a tabindex="4" onclick="switch_to_recovery();">$LOCALIZE$login_login_forget$</a>
+        </div>
+
+        <div class="login center" id="recovery" style="display: none; left: 150%">
+            <header>
+                <h1>$LOCALIZE$login_recovery_title$</h1>
+                <div class="rowtext">$LOCALIZE$login_recovery_prompt$</div>
+            </header>
+
+            <form id="recovery-form">
+                <input id="recovery-username" placeholder="$LOCALIZE$login_recovery_username$" tabindex="5" class="pf-c-form-control ec-text-box" name="username" value="" type="text" autofocus="" aria-invalid="" autocomplete="off">
+                <input id="phone_number" tabindex="6" class="ec-text-box" name="phone_number" type="text" autocomplete="off" placeholder="$LOCALIZE$login_recovery_p_number$" aria-invalid="">
+
+                <input id="Recovery-Submit" tabindex="7" onclick="switch_to_OTP();" class="ec-gradiant-button fill-row" name="login" type="button" value="$LOCALIZE$login_recovery_submit$">
+            </form>
+
+            <a tabindex="8" onclick="switch_to_login(false);">
+                $LOCALIZE$login_recovery_forget$
+            </a>
+        </div>
+
+        <div class="login center" id="OTP" style="display: none; left: 150%">
+            <header>
+                <h1>$LOCALIZE$login_OTP_title$
+                </h1>
+                <div class="rowtext">$LOCALIZE$login_OTP_prompt$</div>
+            </header>
+
+            <form id="OTP-form">
+                <input id="OTP-username" placeholder="$LOCALIZE$login_OTP_username$" tabindex="9" class="pf-c-form-control ec-text-box" name="username" value="" type="text" autofocus="" aria-invalid="" autocomplete="off">
+                <input id="new-password" tabindex="10" class="ec-text-box" name="password" type="password" autocomplete="off" placeholder="$LOCALIZE$login_OTP_password$" aria-invalid="">
+
+                <input id="OTP-Submit" tabindex="11" onclick="switch_to_login(true);" class="ec-gradiant-button fill-row" name="login" type="button" value="$LOCALIZE$login_OTP_submit$">
+            </form>
+
+            <a tabindex="12" onclick="switch_to_recovery();">
+                $LOCALIZE$login_OTP_forget$
+            </a>
+        </div>
+    </body>
+</html>
+
+
+
+
+
+
