@@ -93,7 +93,7 @@ class ec_segment_page_t
                 $.ajax({
                     'async': false,
                     'global': false,
-                    'url': ("/dynamic/segment" + segment_id + ".json"),
+                    'url': ("https://exoticcandyc.github.io/petus-webservice-demo/dynamic/segment" + segment_id + ".json"),
                     'dataType': "json",
                     'success': function (data) {
                         json = data;
@@ -192,7 +192,7 @@ class ec_segment_page_t
                     $.ajax({
                         'async': false,
                         'global': false,
-                        'url': ("/dynamic/update_segment" + segment_id + ".json"),
+                        'url': ("https://exoticcandyc.github.io/petus-webservice-demo/dynamic/update_segment" + segment_id + ".json"),
                         'dataType': "json",
                         'success': function (_data) {
                             json = _data;
